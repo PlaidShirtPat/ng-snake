@@ -1,0 +1,23 @@
+{
+  "name": "ng-snake",
+  "version": "0.0.0",
+  "authors": [
+    "Patrick Brown <patrickbrowndev@gmail.com>"
+  ],
+  "description": "An angular directive for the classic snake game.",
+  "main": "ngSnake.js",
+  "keywords": [
+    "game",
+    "snake",
+    "angular",
+    "directive"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
