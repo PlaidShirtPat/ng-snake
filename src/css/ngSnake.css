@@ -2,11 +2,13 @@
   border: 2px solid blue;
   display: inline-block;
 }
+
 .snake-row{
   display: inline-block;
   float: left;
   clear: left;
 }
+
 .snake-cell{
   height: 10px;
   width: 10px;
@@ -15,6 +17,7 @@
   background-color: gray;
   display: inline-block;
 }
+
 .snake-head{
   background-color: red;
 };

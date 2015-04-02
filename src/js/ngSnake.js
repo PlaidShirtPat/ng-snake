@@ -1,7 +1,7 @@
 var myTemplate = 
-'<div class="snake-grid" tabindex="1">'+
-  '<div class="snake-row" ng-repeat="row in grid">'+
-    '<div class="snake-cell" ng-repeat="cell in row" ></div>'+
+'<div class="snake-grid" ng-snake-keybind tabindex="1" >'+
+  '<div class="snake-row" ng-repeat="row in grid"  >'+
+    '<div class="snake-cell" ng-repeat="cell in row" ng-class="{\'snake-head\': cell.isSnakeSegment}"></div>'+
   '</div>'+
 '</div>'
 
@@ -15,7 +15,7 @@ controller('ngSnakeCtrl', [
       height: 10
     };
 
-    var gameStepTime = 50;
+    $scope.gameStepTime = 500;
 
     var SnakeDirections = {
       north: 'north',
@@ -32,19 +32,14 @@ controller('ngSnakeCtrl', [
     };
 
     function Snake(startingPosition, startingLength, startingDirection){
-      this.headPosition = {
-        x: startingPosition.x,
-        y: startingPosition.y
-      }
-
       this.segments = [ new SnakeSegment( startingPosition ) ];
       this.direction = startingDirection;
     }
 
     function SnakeSegment( position ){
       this.position = {
-        x: 0,
-        y: 0
+        x: position.x,
+        y: position.y
       }
     }
 
@@ -70,36 +65,36 @@ controller('ngSnakeCtrl', [
     }
 
     function stepUpDonsGame(){
-      updateSnakePostion($scope.snake, false);
+      updateSnakePosition($scope.snake, false);
       //updateSnakeTail();
       //updateScore();
       updateGameState();
-      updateGrid($scope.grid);
+      updateGrid($scope.grid, $scope.snake);
     }
 
     function updateSnakePosition(snake, keepLast){
 
       var newPosition = {
-        x: snake.segements[0].x
-        x: snake.segements[0].y
+        x: snake.segments[0].position.x,
+        y: snake.segments[0].position.y
       }
 
       switch(snake.direction){
         case SnakeDirections.north:
-          newPosition.position.y--;
+          newPosition.y--;
           break;
         case SnakeDirections.east:
-          newPosition.position.x--;
+          newPosition.x++;
           break;
         case SnakeDirections.south:
-          newPosition.position.y++;
+          newPosition.y++;
           break;
         case SnakeDirections.west:
-          newPosition.position.x++;
+          newPosition.x--;
           break;
       }
 
-      snake.segements.shift( new SnakeSegment( newPosition ); )
+      snake.segments.unshift( new SnakeSegment( newPosition ) );
 
       if( !keepLast )
         snake.segments.pop();
@@ -109,8 +104,7 @@ controller('ngSnakeCtrl', [
       for( var i = 0; i < grid.length; i++ ){
         for( var j = 0; j < grid.length; j++ ){
           var cell = grid[i][j];
-          cell.isSnakeHead = false;
-          cell.isSnakeTail = false;
+          cell.isSnakeSegment = false;
         }
       }
     }
@@ -120,14 +114,32 @@ controller('ngSnakeCtrl', [
       for( var i = 0; i < grid.length; i++ ){
         for( var j = 0; j < grid.length; j++ ){
           var cell = grid[i][j];
-          if( i == snake.position.y && j == snake.position.x ){
-            cell.isSnakeHead = true;
-          }
-          for( tailSegment in snake.tail ){
-            if( tailSegment.position.y == i tailSegment.position.x == j )
-              cell.isSnakeTail = true;
+          for( var k = 0; k < snake.segments.length; k ++){
+            if( snake.segments[k].position.y == i && snake.segments[k].position.x == j )
+              cell.isSnakeSegment = true;
           }
         }
+      }
+    }
+
+    $scope.handleKeyPress = function(event){
+      console.log('key pressed' + event.which);
+      switch(event.which){
+        case 65:
+          $scope.snake.direction = SnakeDirections.west
+          break;
+        case 68:
+          $scope.snake.direction = SnakeDirections.east;
+          break;
+        case 87:
+          $scope.snake.direction = SnakeDirections.north;
+          break;
+        case 83:
+          $scope.snake.direction = SnakeDirections.south;
+          break;
+        // case 16:
+        //   toggleMoveFast();
+        //   break;
       }
     }
 
@@ -137,23 +149,28 @@ controller('ngSnakeCtrl', [
     }
 
     $scope.startGameLoop = function(){
+      
       if( $scope.gameLoopPromise != null ){
-        $interval(function(){
-          stepUpDonsGame();
-        }, 50);
+        $scope.stopGameLoop();
       }
+
+      $scope.gameLoopPromise =  $interval(function(){
+        stepUpDonsGame();
+      }, $scope.gameStepTime);
     }
     
     $scope.stopGameLoop = function(){
       if( $scope.gameLoopPromise == null )
         return;
       $interval.cancel( $scope.gameLoopPromise );
+      $scope.gameGameLoop = null;
     }
 
     /***** INIT *******/
 
     $scope.initGrid( gridConfig );
     $scope.initSnake();
+    $scope.startGameLoop();
 
   }
 ]).
@@ -166,4 +183,14 @@ directive('ngSnake', [ function(){
       },
   }
 }
-])
+]).directive('ngSnakeKeybind', function($compile){
+  return {
+    link: function(scope, element, attrs){
+      element.bind("keydown", function (event) {
+        scope.handleKeyPress(event);
+        event.preventDefault();
+        event.stopPropagation();
+      });
+    }
+  }
+})
