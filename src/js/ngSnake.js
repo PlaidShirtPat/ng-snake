@@ -1,184 +1,169 @@
+var myTemplate = 
+'<div class="snake-grid" tabindex="1">'+
+  '<div class="snake-row" ng-repeat="row in grid">'+
+    '<div class="snake-cell" ng-repeat="cell in row" ></div>'+
+  '</div>'+
+'</div>'
+
 angular.module('ngSnake', []).
 controller('ngSnakeCtrl', [
-    '$scope', '$interval',
-    function(
-      $scope, $interval
-    ){
+  '$scope', '$interval', 
+  function($scope, $interval){
 
-      /*** CONFIG ***/
-      // $scope.status = "TEST";
-      $scope.grid = [];
-      $scope.gridSize = {x: 40, y: 40};
-      // how much the snake grows when it eats 
-      $scope.snakeGrowth = {value: 1};
-      // the time between game steps
-      $scope.stepTime = {value: 500};
+    var gridConfig = {
+      width: 10,
+      height: 10
+    };
 
+    var gameStepTime = 50;
 
-      /*** CLASSES ***/
-      function SnakeCell(){
-        return {
-          isSnakeHead: false,
-          isSnakeBody: false,
-          isWall: false,
-          isGoal: false,
-        };
+    var SnakeDirections = {
+      north: 'north',
+      east:  'east',
+      south: 'south',
+      west:  'west'
+    }
+
+    /******** CLASSES *******/
+    function GridCell(){
+      this.isSnakeHead = false;
+      this.isSnakeTail = false;
+      this.isWall = false;
+    };
+
+    function Snake(startingPosition, startingLength, startingDirection){
+      this.headPosition = {
+        x: startingPosition.x,
+        y: startingPosition.y
       }
 
-      function Snake(x, y){
-        return {
-          head: {x: x, y:y}, 
-          tail: []
-        };
-      };
-      
-      function SnakeTailSegment(x, y){
-        return {x: x, y: y};
-      };
+      this.segments = [ new SnakeSegment( startingPosition ) ];
+      this.direction = startingDirection;
+    }
 
-      /******* MOVEMENT ********/
-      $scope.snakeDirection = { north: false, east: false, south: false, west: false};
-      $scope.snakeMoveFast = {value: true}
-      $scope.snake = null;
-      function clearDirection(){
-        $scope.snakeDirection.north = false;
-        $scope.snakeDirection.east = false;
-        $scope.snakeDirection.south = false;
-        $scope.snakeDirection.west = false;
-      };
+    function SnakeSegment( position ){
+      this.position = {
+        x: 0,
+        y: 0
+      }
+    }
 
-      function moveNorth(){
-        clearDirection();
-        $scope.snakeDirection.north = true;
-      };
+    /***** ATTRIBUTES *******/
+    $scope.grid = [];
+    $scope.snake = null;
+    $scope.gameLoopPromise = null;
 
-      function moveEast(){
-        clearDirection();
-        $scope.snakeDirection.east = true;
-      };
+    /***** FUNCTIONS *******/
 
-      function moveSouth(){
-        clearDirection();
-        $scope.snakeDirection.south = true;
-      };
+    $scope.initGrid = function( gridConfig ){
+      for( var i = 0; i < gridConfig.height; i++ ){
+        var newRow = [];
+        $scope.grid.push( newRow );
+        for( var j = 0; j < gridConfig.width; j++ ){
+          newRow.push( new GridCell() );
+        }
+      }
+    };
 
-      function moveWest(){
-        clearDirection();
-        $scope.snakeDirection.west = true;
-      };
+    $scope.initSnake = function(){
+      $scope.snake = new Snake( {x: 0, y: 0}, 0, SnakeDirections.east );
+    }
 
-      function toggleMoveFast(){
-        $scope.snakeMoveFast.value = !$scope.snakeMoveFast.value;
-      };
+    function stepUpDonsGame(){
+      updateSnakePostion($scope.snake, false);
+      //updateSnakeTail();
+      //updateScore();
+      updateGameState();
+      updateGrid($scope.grid);
+    }
 
-      /******* DRIVER FUNCTIONS ********/
-      function clearSnakeFromBoard(){
-        var grid = $scope.grid;
-        for(i=0; i<grid.length; i++){
-          for(j=0; j<grid[i].length; j++){
-            grid[i][j].isSnakeHead = false;
-            grid[i][j].isSnakeBody = false;
+    function updateSnakePosition(snake, keepLast){
+
+      var newPosition = {
+        x: snake.segements[0].x
+        x: snake.segements[0].y
+      }
+
+      switch(snake.direction){
+        case SnakeDirections.north:
+          newPosition.position.y--;
+          break;
+        case SnakeDirections.east:
+          newPosition.position.x--;
+          break;
+        case SnakeDirections.south:
+          newPosition.position.y++;
+          break;
+        case SnakeDirections.west:
+          newPosition.position.x++;
+          break;
+      }
+
+      snake.segements.shift( new SnakeSegment( newPosition ); )
+
+      if( !keepLast )
+        snake.segments.pop();
+    }
+
+    function resetGrid(grid){
+      for( var i = 0; i < grid.length; i++ ){
+        for( var j = 0; j < grid.length; j++ ){
+          var cell = grid[i][j];
+          cell.isSnakeHead = false;
+          cell.isSnakeTail = false;
+        }
+      }
+    }
+
+    function updateGrid( grid, snake ){
+      resetGrid(grid);
+      for( var i = 0; i < grid.length; i++ ){
+        for( var j = 0; j < grid.length; j++ ){
+          var cell = grid[i][j];
+          if( i == snake.position.y && j == snake.position.x ){
+            cell.isSnakeHead = true;
+          }
+          for( tailSegment in snake.tail ){
+            if( tailSegment.position.y == i tailSegment.position.x == j )
+              cell.isSnakeTail = true;
           }
         }
-      };
-      function updateSnakeCoords(){
-        if($scope.snakeDirection.north){
-          $scope.snake.head.y -= 1;
-        } else if($scope.snakeDirection.east){
-          $scope.snake.head.x += 1;
-        } else if($scope.snakeDirection.south){
-          $scope.snake.head.y += 1;
-        } else if($scope.snakeDirection.west){
-          $scope.snake.head.x -= 1;
-        }
-      };
-
-      function updateSnakePosition(){
-        clearSnakeFromBoard();
-        updateSnakeCoords();
-        snakeCoords = $scope.snake.head;
-        $scope.grid[snakeCoords.y][snakeCoords.x].isSnakeHead = true;
-      };
-      
-      function updateState(){
-        updateSnakePosition();
-      };
-
-      /******* EVENTS ********/
-      $scope.handleKeyPress = function(event){
-        console.log('key pressed' + event.which);
-        switch(event.which){
-          case 65:
-            moveWest();
-            break;
-          case 68:
-            moveEast();
-            break;
-          case 87:
-            moveNorth();
-            break;
-          case 83:
-            moveSouth();
-            break;
-          case 16:
-            toggleMoveFast();
-            break;
-        }
       }
+    }
+
+    //detects if we've won, lost
+    function updateGameState(){
       
-      /******* INIT ********/
-      function initGrid(){
-        for(i=0; i<$scope.gridSize.y; i++){
-          var newRow = []
-          for(j=0; j<$scope.gridSize.x; j++){
-            newRow.push(SnakeCell());
-          }
-          $scope.grid.push(newRow);
-        }
+    }
+
+    $scope.startGameLoop = function(){
+      if( $scope.gameLoopPromise != null ){
+        $interval(function(){
+          stepUpDonsGame();
+        }, 50);
       }
-
-      function initSnake(){
-        $scope.snake = Snake(1, 1);
-      };
-      
-      function startGameLoop(){
-        $scope.gameLoopObject =  $interval(function(){
-          updateState();
-        }, $scope.stepTime.value);
-      };
-
-      initGrid();
-      initSnake();
-      startGameLoop();
     }
-]).
-//this directive just instantiates the snake controller with params
-directive('ngSnake', function($compile){
-  return {
-    restrict: "EA",
-    template: 
-    '<div ng-controller="ngSnakeCtrl">' +
-      '<h4> {{status}} </h4>'+
-      '<div class="snake-grid" ng-snake-keybind tabindex="1">'+
-        '<div class="snake-row" ng-repeat="row in grid">'+
-          '<div class="snake-cell" ng-repeat="cell in row" ng-class="{\'snake-head\': cell.isSnakeHead}"></td>'+
-        '</div>'+
-      '</div>'+
-    '</div>',
-    link: function(scope, element, attrs){
-      $compile(angular.element(element).contents())(scope);
-    },
-  };
-}).
-directive('ngSnakeKeybind', function($compile){
-  return {
-    link: function(scope, element, attrs){
-      element.bind("keydown", function (event) {
-        scope.handleKeyPress(event);
-        event.preventDefault();
-        event.stopPropagation();
-      });
-     
+    
+    $scope.stopGameLoop = function(){
+      if( $scope.gameLoopPromise == null )
+        return;
+      $interval.cancel( $scope.gameLoopPromise );
     }
+
+    /***** INIT *******/
+
+    $scope.initGrid( gridConfig );
+    $scope.initSnake();
+
   }
-})
+]).
+directive('ngSnake', [ function(){
+  return {
+      controller: 'ngSnakeCtrl',
+      restrict: 'EA',
+      template: myTemplate,
+      link: function( scope, element, attributes ){
+      },
+  }
+}
+])
